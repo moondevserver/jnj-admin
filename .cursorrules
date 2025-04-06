@@ -1,0 +1,53 @@
+## Code Guidelines
+
+### File Structure
+- 모든 파일은 모두 `src` 폴더 내에 저장, 'src' 폴더를 '@' alias로 하여 import할 때 절대 경로로 사용
+- 페이지 폴더는 `src/app` 사용
+- 폴더 구조는 다음과 같이 설계
+
+```
+src/
+  app/
+    [page1]/page.tsx
+    [page2]/page.tsx
+    [page3]/page.tsx
+    ...
+  graphql/
+    [query1].ts
+    [query2].ts
+    route.ts
+    ...
+  components/
+    [component1]/[component1].tsx
+    [component2]/[component2].tsx
+    ...
+  types/
+    [type1].ts
+    [type2].ts
+    ...
+  utils/
+    [util1].ts
+```
+
+### UI 라이브러리
+- shadcn/ui 사용
+- shadcn 설치시 'shadcn@latest' 사용, ex) `npx shadcn@latest init`, `npx shadcn@latest add [component]`
+- 모든 컴포넌트는 `src/components` 폴더 내에 저장
+- 모든 컴포넌트는 모두 `src/components` 폴더 내에 저장
+
+### TypeScript Guidelines
+- type에 `any` 사용 가능
+- arrow function 사용
+- 함수 개별적으로 export 하지 않고, 파일 하단에 모아서, `export { fun1, fun2, fun3, ... }`
+- index.ts 가 있는 경우, 폴더 내의 다른 함수들은 모두 index.ts 에서 export
+- type 파일은 모두 `src/types.ts` 파일에 일괄 저장
+
+
+### Naming Conventions
+- Use camelCase for functions and variables
+- Use UPPER_CASE for constants
+- Use kebab-case for file names
+
+### Documentation
+- Add JSDoc comments for functions
+- Add usage examples in comments 
