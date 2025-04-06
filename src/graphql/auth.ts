@@ -16,6 +16,17 @@ const LOGIN = gql`
           role {
             id
             name
+            permissions {
+              id
+              name
+              code
+              description
+            }
+          }
+          site {
+            id
+            domain
+            name
           }
         }
       }
@@ -33,6 +44,7 @@ const REGISTER = gql`
         email
         first_name
         last_name
+        is_active
       }
     }
   }
@@ -91,6 +103,24 @@ const REFRESH_TOKEN = gql`
         email
         first_name
         last_name
+        is_active
+        user_roles {
+          role {
+            id
+            name
+            permissions {
+              id
+              name
+              code
+              description
+            }
+          }
+          site {
+            id
+            domain
+            name
+          }
+        }
       }
     }
   }

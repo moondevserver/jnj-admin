@@ -60,8 +60,8 @@ const LoginForm = () => {
     const input = {
       email: values.email,
       password: values.password,
-      siteDomain: `${currentUrl.hostname}${currentUrl.port ? `:${currentUrl.port}` : ''}`,
-      pagePath: currentUrl.pathname
+      site_domain: `${currentUrl.hostname}${currentUrl.port ? `:${currentUrl.port}` : ''}`,
+      page_path: currentUrl.pathname
     };
     console.log('Login Mutation Input:', input);
     
