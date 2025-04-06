@@ -38,20 +38,18 @@ import { Permission } from "@/types";
 const PermissionTable = () => {
   const router = useRouter();
   const [search, setSearch] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
   const [deletePermissionId, setDeletePermissionId] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-  // 현재 사용자 정보 조회
-  const { data: userData } = useQuery(GET_CURRENT_USER);
-  const site_id = userData?.me?.user_roles?.[0]?.site?.id;
-
-  const pageSize = 10;
-
+  // 권한 목록 조회
   const { loading, error, data, refetch } = useQuery(GET_PERMISSIONS, {
-    variables: { site_id },
     fetchPolicy: "network-only",
-    skip: !site_id,
+    onCompleted: (data) => {
+      console.log('Permissions data:', data);
+    },
+    onError: (error) => {
+      console.error('Permissions query error:', error);
+    }
   });
 
   const [deletePermission] = useMutation(DELETE_PERMISSION, {
@@ -83,23 +81,20 @@ const PermissionTable = () => {
     }
   };
 
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page);
-  };
-
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearch(e.target.value);
-    setCurrentPage(1);
   };
 
+  // 권한 목록 필터링
   const permissions = data?.permissions || [];
+  console.log('Filtered permissions:', permissions);
   const filteredPermissions = search
     ? permissions.filter((permission: Permission) =>
-        permission.name.toLowerCase().includes(search.toLowerCase())
+        permission.name.toLowerCase().includes(search.toLowerCase()) ||
+        permission.code.toLowerCase().includes(search.toLowerCase()) ||
+        (permission.description && permission.description.toLowerCase().includes(search.toLowerCase()))
       )
     : permissions;
-
-  const totalPages = data?.permissions?.totalPages || 1;
 
   if (error) {
     return <div>오류가 발생했습니다: {error.message}</div>;

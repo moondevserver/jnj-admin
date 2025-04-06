@@ -20,23 +20,19 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { GET_USER, CREATE_USER, UPDATE_USER } from "@/graphql/users";
-import { GET_ROLES } from "@/graphql/roles";
 import { User, Role } from "@/types";
 
 const formSchema = z.object({
-  username: z.string().min(2, {
-    message: "사용자명은 2자 이상이어야 합니다.",
-  }),
   email: z.string().email({
     message: "유효한 이메일 주소를 입력해주세요.",
   }),
   password: z.string().min(6, {
     message: "비밀번호는 6자 이상이어야 합니다.",
   }).optional(),
-  firstName: z.string().optional(),
-  lastName: z.string().optional(),
-  isActive: z.boolean(),
-  roleIds: z.array(z.string()).min(1, {
+  first_name: z.string().optional(),
+  last_name: z.string().optional(),
+  is_active: z.boolean(),
+  role_ids: z.array(z.string()).min(1, {
     message: "최소 하나의 역할을 선택해야 합니다.",
   }),
 });
@@ -49,18 +45,45 @@ const UserForm = ({ userId }: UserFormProps) => {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
 
-  // 역할 목록 조회
-  const { data: rolesData } = useQuery(GET_ROLES, {
-    variables: {
-      pagination: { page: 1, pageSize: 100 },
-      sort: { field: "name", direction: "asc" },
+  console.log('UserForm rendered with userId:', userId);
+
+  // 하드코딩된 역할 데이터
+  const roles = [
+    {
+      id: "1",
+      name: "관리자",
+      description: "시스템 관리자",
+      permissions: []
     },
-  });
+    {
+      id: "2", 
+      name: "일반 사용자",
+      description: "일반 사용자",
+      permissions: []
+    }
+  ];
 
   // 사용자 정보 조회 (수정 시)
-  const { data: userData } = useQuery(GET_USER, {
+  const { data: userData, loading: userLoading, error: userError } = useQuery(GET_USER, {
     variables: { id: userId },
     skip: !userId,
+    fetchPolicy: 'network-only',
+    onCompleted: (data) => {
+      console.log('User data loaded:', data);
+      if (data?.user) {
+        form.reset({
+          email: data.user.email || "",
+          password: "",
+          first_name: data.user.first_name || "",
+          last_name: data.user.last_name || "",
+          is_active: data.user.is_active || false,
+          role_ids: data.user.user_roles?.map((ur: any) => ur.role.id) || [],
+        });
+      }
+    },
+    onError: (error) => {
+      console.error('Error loading user data:', error);
+    }
   });
 
   const [createUser] = useMutation(CREATE_USER, {
@@ -92,29 +115,29 @@ const UserForm = ({ userId }: UserFormProps) => {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      username: "",
       email: "",
       password: "",
-      firstName: "",
-      lastName: "",
-      isActive: true,
-      roleIds: [],
+      first_name: "",
+      last_name: "",
+      is_active: true,
+      role_ids: [],
     },
   });
 
   useEffect(() => {
-    if (userData?.user) {
-      const user = userData.user;
+    console.log('useEffect triggered with:', { userId, userData });
+    if (userId && userData?.user) {
+      console.log('Setting form data with:', userData.user);
       form.reset({
-        username: user.username,
-        email: user.email,
-        firstName: user.firstName || "",
-        lastName: user.lastName || "",
-        isActive: user.isActive,
-        roleIds: user.roles.map((role: Role) => role.id),
+        email: userData.user.email || "",
+        password: "",
+        first_name: userData.user.first_name || "",
+        last_name: userData.user.last_name || "",
+        is_active: userData.user.is_active || false,
+        role_ids: userData.user.user_roles?.map((ur: any) => ur.role.id) || [],
       });
     }
-  }, [userData, form]);
+  }, [userId, userData]);
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setIsLoading(true);
@@ -139,7 +162,29 @@ const UserForm = ({ userId }: UserFormProps) => {
     }
   };
 
-  const roles = rolesData?.roles?.items || [];
+  if (userLoading) {
+    return (
+      <div className="flex items-center justify-center h-[50vh]">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900" />
+      </div>
+    );
+  }
+
+  if (userError) {
+    return (
+      <div className="text-red-500 text-center">
+        사용자 정보를 불러오는데 실패했습니다: {userError.message}
+      </div>
+    );
+  }
+
+  if (roles.length === 0) {
+    return (
+      <div className="text-yellow-500 text-center">
+        사용 가능한 역할이 없습니다. 먼저 역할을 생성해주세요.
+      </div>
+    );
+  }
 
   return (
     <Card>
@@ -149,19 +194,6 @@ const UserForm = ({ userId }: UserFormProps) => {
       <CardContent>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="username"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>사용자명</FormLabel>
-                  <FormControl>
-                    <Input placeholder="사용자명" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
             <FormField
               control={form.control}
               name="email"
@@ -195,7 +227,7 @@ const UserForm = ({ userId }: UserFormProps) => {
             <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
-                name="firstName"
+                name="first_name"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>이름</FormLabel>
@@ -208,7 +240,7 @@ const UserForm = ({ userId }: UserFormProps) => {
               />
               <FormField
                 control={form.control}
-                name="lastName"
+                name="last_name"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>성</FormLabel>
@@ -222,7 +254,7 @@ const UserForm = ({ userId }: UserFormProps) => {
             </div>
             <FormField
               control={form.control}
-              name="isActive"
+              name="is_active"
               render={({ field }) => (
                 <FormItem className="flex flex-row items-center space-x-2 space-y-0">
                   <FormControl>
@@ -238,13 +270,13 @@ const UserForm = ({ userId }: UserFormProps) => {
             />
             <FormField
               control={form.control}
-              name="roleIds"
+              name="role_ids"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>역할</FormLabel>
                   <FormControl>
                     <Select
-                      value={field.value[0]}
+                      value={field.value?.[0] || ""}
                       onValueChange={(value) => field.onChange([value])}
                     >
                       <SelectTrigger>

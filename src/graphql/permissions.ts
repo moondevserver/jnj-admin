@@ -1,8 +1,8 @@
 import { gql } from '@apollo/client';
 
 const GET_PERMISSIONS = gql`
-  query GetPermissions($site_id: ID) {
-    permissions(site_id: $site_id) {
+  query GetPermissions {
+    permissions {
       id
       name
       description

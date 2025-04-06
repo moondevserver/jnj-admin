@@ -54,7 +54,7 @@ const UserTable = () => {
   const { loading, error, data, refetch } = useQuery(GET_USERS, {
     variables: {
       skip: (currentPage - 1) * pageSize,
-      take: pageSize,
+      take: pageSize
     },
     fetchPolicy: "network-only",
   });
@@ -94,7 +94,13 @@ const UserTable = () => {
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearch(e.target.value);
-    setCurrentPage(1);
+    // 임시로 검색 기능 비활성화
+    // setCurrentPage(1);
+    // refetch({
+    //   skip: 0,
+    //   take: pageSize,
+    //   search: e.target.value || undefined,
+    // });
   };
 
   const users = data?.users || [];

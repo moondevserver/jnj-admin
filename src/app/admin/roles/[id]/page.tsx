@@ -7,15 +7,17 @@ export const metadata: Metadata = {
 };
 
 interface EditRolePageProps {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
-export default function EditRolePage({ params }: EditRolePageProps) {
+export default async function EditRolePage({ params }: EditRolePageProps) {
+  const { id } = await params;
+  
   return (
     <div className="container mx-auto py-10">
-      <RoleForm roleId={params.id} />
+      <RoleForm roleId={id} />
     </div>
   );
 } 

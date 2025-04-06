@@ -12,27 +12,18 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { GET_PERMISSION, CREATE_PERMISSION, UPDATE_PERMISSION } from "@/graphql/permissions";
+import { GET_CURRENT_USER } from "@/graphql/auth";
 import { Permission } from "@/types";
 
 const formSchema = z.object({
   name: z.string().min(2, {
     message: "권한명은 2자 이상이어야 합니다.",
   }),
+  code: z.string().min(2, {
+    message: "권한 코드는 2자 이상이어야 합니다.",
+  }),
   description: z.string().optional(),
-  resource: z.string().min(1, {
-    message: "리소스를 입력해주세요.",
-  }),
-  action: z.enum(["create", "read", "update", "delete"], {
-    required_error: "액션을 선택해주세요.",
-  }),
 });
 
 interface PermissionFormProps {
@@ -42,6 +33,10 @@ interface PermissionFormProps {
 const PermissionForm = ({ permissionId }: PermissionFormProps) => {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
+
+  // 현재 사용자 정보 조회
+  const { data: userData } = useQuery(GET_CURRENT_USER);
+  const site_id = userData?.me?.user_roles?.[0]?.site?.id;
 
   // 권한 정보 조회 (수정 시)
   const { data: permissionData } = useQuery(GET_PERMISSION, {
@@ -79,37 +74,46 @@ const PermissionForm = ({ permissionId }: PermissionFormProps) => {
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: "",
+      code: "",
       description: "",
-      resource: "",
-      action: "read",
     },
   });
 
   useEffect(() => {
     if (permissionData?.permission) {
       const permission = permissionData.permission;
-      form.reset({
-        name: permission.name,
-        description: permission.description || "",
-        resource: permission.resource,
-        action: permission.action,
-      });
+      if (!form.formState.isDirty) {
+        const defaultValues = {
+          name: permission.name,
+          code: permission.code,
+          description: permission.description || "",
+        };
+        
+        if (JSON.stringify(form.getValues()) !== JSON.stringify(defaultValues)) {
+          form.reset(defaultValues);
+        }
+      }
     }
-  }, [permissionData, form]);
+  }, [permissionData]);
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setIsLoading(true);
+    const input = {
+      ...values,
+      site_id,
+    };
+
     if (permissionId) {
       updatePermission({
         variables: {
           id: permissionId,
-          input: values,
+          input,
         },
       });
     } else {
       createPermission({
         variables: {
-          input: values,
+          input,
         },
       });
     }
@@ -138,6 +142,19 @@ const PermissionForm = ({ permissionId }: PermissionFormProps) => {
             />
             <FormField
               control={form.control}
+              name="code"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>권한 코드</FormLabel>
+                  <FormControl>
+                    <Input placeholder="예: user:manage" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
               name="description"
               render={({ field }) => (
                 <FormItem>
@@ -147,45 +164,6 @@ const PermissionForm = ({ permissionId }: PermissionFormProps) => {
                       placeholder="권한에 대한 설명을 입력하세요"
                       {...field}
                     />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="resource"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>리소스</FormLabel>
-                  <FormControl>
-                    <Input placeholder="리소스" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="action"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>액션</FormLabel>
-                  <FormControl>
-                    <Select
-                      value={field.value}
-                      onValueChange={field.onChange}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="액션을 선택하세요" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="create">생성</SelectItem>
-                        <SelectItem value="read">조회</SelectItem>
-                        <SelectItem value="update">수정</SelectItem>
-                        <SelectItem value="delete">삭제</SelectItem>
-                      </SelectContent>
-                    </Select>
                   </FormControl>
                   <FormMessage />
                 </FormItem>

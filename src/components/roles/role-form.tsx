@@ -23,6 +23,55 @@ import { GET_ROLE, CREATE_ROLE, UPDATE_ROLE } from "@/graphql/roles";
 import { GET_PERMISSIONS } from "@/graphql/permissions";
 import { Role, Permission } from "@/types";
 
+// 다중 선택을 위한 커스텀 Select 컴포넌트
+const MultiSelect = ({ value, onChange, options, placeholder }: {
+  value: string[];
+  onChange: (value: string[]) => void;
+  options: { id: string; name: string }[];
+  placeholder: string;
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+
+  const handleSelect = (optionId: string) => {
+    const newValue = value.includes(optionId)
+      ? value.filter(id => id !== optionId)
+      : [...value, optionId];
+    onChange(newValue);
+  };
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        {value.length > 0
+          ? options
+              .filter(option => value.includes(option.id))
+              .map(option => option.name)
+              .join(", ")
+          : placeholder}
+      </button>
+      {isOpen && (
+        <div className="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-md border bg-popover p-1">
+          {options.map(option => (
+            <div
+              key={option.id}
+              className={`relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground ${
+                value.includes(option.id) ? "bg-accent text-accent-foreground" : ""
+              }`}
+              onClick={() => handleSelect(option.id)}
+            >
+              {option.name}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
 const formSchema = z.object({
   name: z.string().min(2, {
     message: "역할명은 2자 이상이어야 합니다.",
@@ -41,19 +90,60 @@ const RoleForm = ({ roleId }: RoleFormProps) => {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
 
-  // 권한 목록 조회
-  const { data: permissionsData } = useQuery(GET_PERMISSIONS, {
-    variables: {
-      pagination: { page: 1, pageSize: 100 },
-      sort: { field: "name", direction: "asc" },
+  // 임시 하드코딩된 역할 데이터
+  const mockRoles = [
+    {
+      id: "1",
+      name: "시스템 관리자",
+      description: "시스템의 모든 기능에 접근 가능한 관리자",
+      permissions: [
+        { id: "1", name: "사용자 관리", code: "user:manage", description: "사용자 생성, 수정, 삭제" },
+        { id: "2", name: "역할 관리", code: "role:manage", description: "역할 생성, 수정, 삭제" },
+      ],
     },
-  });
+    {
+      id: "2",
+      name: "일반 사용자",
+      description: "기본적인 기능만 사용 가능한 일반 사용자",
+      permissions: [
+        { id: "3", name: "프로필 조회", code: "profile:read", description: "자신의 프로필 조회" },
+        { id: "4", name: "프로필 수정", code: "profile:write", description: "자신의 프로필 수정" },
+      ],
+    },
+    {
+      id: "3",
+      name: "편집자",
+      description: "콘텐츠 편집 권한을 가진 사용자",
+      permissions: [
+        { id: "5", name: "콘텐츠 조회", code: "content:read", description: "콘텐츠 조회" },
+        { id: "6", name: "콘텐츠 편집", code: "content:write", description: "콘텐츠 생성, 수정, 삭제" },
+      ],
+    },
+    {
+      id: "4",
+      name: "조회자",
+      description: "콘텐츠 조회만 가능한 사용자",
+      permissions: [
+        { id: "5", name: "콘텐츠 조회", code: "content:read", description: "콘텐츠 조회" },
+      ],
+    },
+  ];
+
+  // 임시 하드코딩된 권한 목록
+  const mockPermissions = [
+    { id: "1", name: "사용자 관리", code: "user:manage", description: "사용자 생성, 수정, 삭제" },
+    { id: "2", name: "역할 관리", code: "role:manage", description: "역할 생성, 수정, 삭제" },
+    { id: "3", name: "프로필 조회", code: "profile:read", description: "자신의 프로필 조회" },
+    { id: "4", name: "프로필 수정", code: "profile:write", description: "자신의 프로필 수정" },
+    { id: "5", name: "콘텐츠 조회", code: "content:read", description: "콘텐츠 조회" },
+    { id: "6", name: "콘텐츠 편집", code: "content:write", description: "콘텐츠 생성, 수정, 삭제" },
+  ];
+
+  // 권한 목록 조회 (하드코딩된 데이터 사용)
+  const permissions = mockPermissions;
 
   // 역할 정보 조회 (수정 시)
-  const { data: roleData } = useQuery(GET_ROLE, {
-    variables: { id: roleId },
-    skip: !roleId,
-  });
+  const mockRole = roleId ? mockRoles.find(role => role.id === roleId) : null;
 
   const [createRole] = useMutation(CREATE_ROLE, {
     onCompleted: () => {
@@ -91,15 +181,19 @@ const RoleForm = ({ roleId }: RoleFormProps) => {
   });
 
   useEffect(() => {
-    if (roleData?.role) {
-      const role = roleData.role;
-      form.reset({
-        name: role.name,
-        description: role.description || "",
-        permissionIds: role.permissions.map((permission: Permission) => permission.id),
-      });
+    if (mockRole && !form.formState.isDirty) {
+      const defaultValues = {
+        name: mockRole.name,
+        description: mockRole.description || "",
+        permissionIds: mockRole.permissions.map((permission: Permission) => permission.id),
+      };
+      
+      // 현재 폼 값과 새로운 값이 다를 때만 reset 실행
+      if (JSON.stringify(form.getValues()) !== JSON.stringify(defaultValues)) {
+        form.reset(defaultValues);
+      }
     }
-  }, [roleData, form]);
+  }, [mockRole]);
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setIsLoading(true);
@@ -118,8 +212,6 @@ const RoleForm = ({ roleId }: RoleFormProps) => {
       });
     }
   };
-
-  const permissions = permissionsData?.permissions?.items || [];
 
   return (
     <Card>
@@ -165,21 +257,12 @@ const RoleForm = ({ roleId }: RoleFormProps) => {
                 <FormItem>
                   <FormLabel>권한</FormLabel>
                   <FormControl>
-                    <Select
-                      value={field.value[0]}
-                      onValueChange={(value) => field.onChange([value])}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="권한을 선택하세요" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {permissions.map((permission: Permission) => (
-                          <SelectItem key={permission.id} value={permission.id}>
-                            {permission.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <MultiSelect
+                      value={field.value}
+                      onChange={field.onChange}
+                      options={permissions}
+                      placeholder="권한을 선택하세요"
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

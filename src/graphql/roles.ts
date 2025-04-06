@@ -6,6 +6,11 @@ const GET_ROLES = gql`
       id
       name
       description
+      site {
+        id
+        domain
+        name
+      }
       permissions {
         id
         name
@@ -22,11 +27,16 @@ const GET_ROLE = gql`
       id
       name
       description
+      site {
+        id
+        domain
+        name
+      }
       permissions {
         id
         name
-        resource
-        action
+        code
+        description
       }
     }
   }
@@ -54,10 +64,7 @@ const UPDATE_ROLE = gql`
 
 const DELETE_ROLE = gql`
   mutation DeleteRole($id: ID!) {
-    deleteRole(id: $id) {
-      success
-      message
-    }
+    deleteRole(id: $id)
   }
 `;
 

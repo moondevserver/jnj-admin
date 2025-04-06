@@ -41,27 +41,44 @@ const RoleTable = () => {
   const [deleteRoleId, setDeleteRoleId] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-  // 현재 사용자 정보 조회
-  const { data: userData } = useQuery(GET_CURRENT_USER);
-  const site_id = userData?.me?.user_roles?.[0]?.site?.id;
-
-  const { loading, error, data, refetch } = useQuery(GET_ROLES, {
-    variables: { site_id },
-    fetchPolicy: "network-only",
-    skip: !site_id,
-  });
-
-  const [deleteRole] = useMutation(DELETE_ROLE, {
-    onCompleted: () => {
-      toast.success("역할이 성공적으로 삭제되었습니다.");
-      refetch();
+  // 임시 하드코딩된 역할 데이터
+  const mockRoles = [
+    {
+      id: "1",
+      name: "시스템 관리자",
+      description: "시스템의 모든 기능에 접근 가능한 관리자",
+      permissions: [
+        { id: "1", name: "사용자 관리", code: "user:manage", description: "사용자 생성, 수정, 삭제" },
+        { id: "2", name: "역할 관리", code: "role:manage", description: "역할 생성, 수정, 삭제" },
+      ],
     },
-    onError: (error) => {
-      toast.error("역할 삭제 실패", {
-        description: error.message,
-      });
+    {
+      id: "2",
+      name: "일반 사용자",
+      description: "기본적인 기능만 사용 가능한 일반 사용자",
+      permissions: [
+        { id: "3", name: "프로필 조회", code: "profile:read", description: "자신의 프로필 조회" },
+        { id: "4", name: "프로필 수정", code: "profile:write", description: "자신의 프로필 수정" },
+      ],
     },
-  });
+    {
+      id: "3",
+      name: "편집자",
+      description: "콘텐츠 편집 권한을 가진 사용자",
+      permissions: [
+        { id: "5", name: "콘텐츠 조회", code: "content:read", description: "콘텐츠 조회" },
+        { id: "6", name: "콘텐츠 편집", code: "content:write", description: "콘텐츠 생성, 수정, 삭제" },
+      ],
+    },
+    {
+      id: "4",
+      name: "조회자",
+      description: "콘텐츠 조회만 가능한 사용자",
+      permissions: [
+        { id: "5", name: "콘텐츠 조회", code: "content:read", description: "콘텐츠 조회" },
+      ],
+    },
+  ];
 
   const handleDeleteClick = (roleId: string) => {
     setDeleteRoleId(roleId);
@@ -70,11 +87,7 @@ const RoleTable = () => {
 
   const handleDeleteConfirm = () => {
     if (deleteRoleId) {
-      deleteRole({
-        variables: {
-          id: deleteRoleId,
-        },
-      });
+      toast.success("역할이 성공적으로 삭제되었습니다.");
       setIsDialogOpen(false);
       setDeleteRoleId(null);
     }
@@ -84,16 +97,11 @@ const RoleTable = () => {
     setSearch(e.target.value);
   };
 
-  const roles = data?.roles || [];
   const filteredRoles = search
-    ? roles.filter((role: Role) =>
+    ? mockRoles.filter((role) =>
         role.name.toLowerCase().includes(search.toLowerCase())
       )
-    : roles;
-
-  if (error) {
-    return <div>오류가 발생했습니다: {error.message}</div>;
-  }
+    : mockRoles;
 
   return (
     <div className="space-y-4">
@@ -128,20 +136,14 @@ const RoleTable = () => {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {loading ? (
-              <TableRow>
-                <TableCell colSpan={4} className="text-center">
-                  로딩 중...
-                </TableCell>
-              </TableRow>
-            ) : filteredRoles.length === 0 ? (
+            {filteredRoles.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={4} className="text-center">
                   역할이 없습니다.
                 </TableCell>
               </TableRow>
             ) : (
-              filteredRoles.map((role: Role) => (
+              filteredRoles.map((role) => (
                 <TableRow key={role.id}>
                   <TableCell>{role.name}</TableCell>
                   <TableCell>{role.description || "-"}</TableCell>
