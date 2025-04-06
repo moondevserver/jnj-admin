@@ -32,8 +32,6 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { GET_ROLES, DELETE_ROLE } from "@/graphql/roles";
-import { GET_CURRENT_USER } from "@/graphql/auth";
-import { Role } from "@/types";
 
 const RoleTable = () => {
   const router = useRouter();
@@ -41,44 +39,24 @@ const RoleTable = () => {
   const [deleteRoleId, setDeleteRoleId] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-  // 임시 하드코딩된 역할 데이터
-  const mockRoles = [
-    {
-      id: "1",
-      name: "시스템 관리자",
-      description: "시스템의 모든 기능에 접근 가능한 관리자",
-      permissions: [
-        { id: "1", name: "사용자 관리", code: "user:manage", description: "사용자 생성, 수정, 삭제" },
-        { id: "2", name: "역할 관리", code: "role:manage", description: "역할 생성, 수정, 삭제" },
-      ],
+  const { loading, error, data, refetch } = useQuery(GET_ROLES, {
+    variables: {
+      search: search || undefined,
     },
-    {
-      id: "2",
-      name: "일반 사용자",
-      description: "기본적인 기능만 사용 가능한 일반 사용자",
-      permissions: [
-        { id: "3", name: "프로필 조회", code: "profile:read", description: "자신의 프로필 조회" },
-        { id: "4", name: "프로필 수정", code: "profile:write", description: "자신의 프로필 수정" },
-      ],
+    fetchPolicy: "network-only",
+  });
+
+  const [deleteRole] = useMutation(DELETE_ROLE, {
+    onCompleted: () => {
+      toast.success("역할이 성공적으로 삭제되었습니다.");
+      refetch();
     },
-    {
-      id: "3",
-      name: "편집자",
-      description: "콘텐츠 편집 권한을 가진 사용자",
-      permissions: [
-        { id: "5", name: "콘텐츠 조회", code: "content:read", description: "콘텐츠 조회" },
-        { id: "6", name: "콘텐츠 편집", code: "content:write", description: "콘텐츠 생성, 수정, 삭제" },
-      ],
+    onError: (error) => {
+      toast.error("역할 삭제 실패", {
+        description: error.message,
+      });
     },
-    {
-      id: "4",
-      name: "조회자",
-      description: "콘텐츠 조회만 가능한 사용자",
-      permissions: [
-        { id: "5", name: "콘텐츠 조회", code: "content:read", description: "콘텐츠 조회" },
-      ],
-    },
-  ];
+  });
 
   const handleDeleteClick = (roleId: string) => {
     setDeleteRoleId(roleId);
@@ -87,7 +65,11 @@ const RoleTable = () => {
 
   const handleDeleteConfirm = () => {
     if (deleteRoleId) {
-      toast.success("역할이 성공적으로 삭제되었습니다.");
+      deleteRole({
+        variables: {
+          id: deleteRoleId,
+        },
+      });
       setIsDialogOpen(false);
       setDeleteRoleId(null);
     }
@@ -95,13 +77,16 @@ const RoleTable = () => {
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearch(e.target.value);
+    refetch({
+      search: e.target.value || undefined,
+    });
   };
 
-  const filteredRoles = search
-    ? mockRoles.filter((role) =>
-        role.name.toLowerCase().includes(search.toLowerCase())
-      )
-    : mockRoles;
+  const roles = data?.roles || [];
+
+  if (error) {
+    return <div>오류가 발생했습니다: {error.message}</div>;
+  }
 
   return (
     <div className="space-y-4">
@@ -129,25 +114,35 @@ const RoleTable = () => {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>역할명</TableHead>
+              <TableHead>이름</TableHead>
               <TableHead>설명</TableHead>
-              <TableHead>권한 수</TableHead>
+              <TableHead>사이트</TableHead>
+              <TableHead>권한</TableHead>
               <TableHead className="text-right">작업</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredRoles.length === 0 ? (
+            {loading ? (
               <TableRow>
-                <TableCell colSpan={4} className="text-center">
+                <TableCell colSpan={5} className="text-center">
+                  로딩 중...
+                </TableCell>
+              </TableRow>
+            ) : roles.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={5} className="text-center">
                   역할이 없습니다.
                 </TableCell>
               </TableRow>
             ) : (
-              filteredRoles.map((role) => (
+              roles.map((role: any) => (
                 <TableRow key={role.id}>
                   <TableCell>{role.name}</TableCell>
-                  <TableCell>{role.description || "-"}</TableCell>
-                  <TableCell>{role.permissions?.length || 0}</TableCell>
+                  <TableCell>{role.description}</TableCell>
+                  <TableCell>{role.site?.name || "전체"}</TableCell>
+                  <TableCell>
+                    {role.permissions?.map((perm: any) => perm.name).join(", ") || ""}
+                  </TableCell>
                   <TableCell className="text-right">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>

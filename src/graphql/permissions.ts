@@ -1,56 +1,51 @@
 import { gql } from '@apollo/client';
 
-const GET_PERMISSIONS = gql`
-  query GetPermissions {
-    permissions {
+export const GET_PERMISSIONS = gql`
+  query GetPermissions($search: String) {
+    permissions(search: $search) {
       id
+      code
       name
       description
-      code
     }
   }
 `;
 
-const GET_PERMISSION = gql`
+export const GET_PERMISSION = gql`
   query GetPermission($id: ID!) {
     permission(id: $id) {
       id
+      code
       name
       description
-      code
     }
   }
 `;
 
-const CREATE_PERMISSION = gql`
+export const CREATE_PERMISSION = gql`
   mutation CreatePermission($input: PermissionInput!) {
     createPermission(input: $input) {
       id
+      code
       name
       description
-      code
     }
   }
 `;
 
-const UPDATE_PERMISSION = gql`
+export const UPDATE_PERMISSION = gql`
   mutation UpdatePermission($id: ID!, $input: PermissionInput!) {
     updatePermission(id: $id, input: $input) {
       id
+      code
       name
       description
-      code
     }
   }
 `;
 
-const DELETE_PERMISSION = gql`
+export const DELETE_PERMISSION = gql`
   mutation DeletePermission($id: ID!) {
-    deletePermission(id: $id) {
-      success
-      message
-    }
+    deletePermission(id: $id)
   }
-`;
-
-export { GET_PERMISSIONS, GET_PERMISSION, CREATE_PERMISSION, UPDATE_PERMISSION, DELETE_PERMISSION }; 
+`; 

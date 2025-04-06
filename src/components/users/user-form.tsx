@@ -1,317 +1,254 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { useQuery, useMutation } from "@apollo/client";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Checkbox } from "@/components/ui/checkbox";
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useForm } from 'react-hook-form';
+import { useMutation, useQuery } from '@apollo/client';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
+import { toast } from 'sonner';
+import { Button } from '@/components/ui/button';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { GET_USER, CREATE_USER, UPDATE_USER } from "@/graphql/users";
-import { User, Role } from "@/types";
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
+import { Card } from '@/components/ui/card';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { GET_USER, UPDATE_USER } from '@/graphql/users';
 
 const formSchema = z.object({
-  email: z.string().email({
-    message: "유효한 이메일 주소를 입력해주세요.",
-  }),
-  password: z.string().min(6, {
-    message: "비밀번호는 6자 이상이어야 합니다.",
-  }).optional(),
+  email: z.string().email('유효한 이메일 주소를 입력해주세요.'),
   first_name: z.string().optional(),
   last_name: z.string().optional(),
+  profile_image: z.string().optional(),
   is_active: z.boolean(),
-  role_ids: z.array(z.string()).min(1, {
-    message: "최소 하나의 역할을 선택해야 합니다.",
-  }),
+  metadata: z.string().optional(),
 });
 
-interface UserFormProps {
-  userId?: string;
+type FormValues = z.infer<typeof formSchema>;
+
+interface Props {
+  id: string;
 }
 
-const UserForm = ({ userId }: UserFormProps) => {
+export default function UserForm({ id }: Props) {
   const router = useRouter();
-  const [isLoading, setIsLoading] = useState(false);
-
-  console.log('UserForm rendered with userId:', userId);
-
-  // 하드코딩된 역할 데이터
-  const roles = [
-    {
-      id: "1",
-      name: "관리자",
-      description: "시스템 관리자",
-      permissions: []
-    },
-    {
-      id: "2", 
-      name: "일반 사용자",
-      description: "일반 사용자",
-      permissions: []
-    }
-  ];
-
-  // 사용자 정보 조회 (수정 시)
-  const { data: userData, loading: userLoading, error: userError } = useQuery(GET_USER, {
-    variables: { id: userId },
-    skip: !userId,
-    fetchPolicy: 'network-only',
-    onCompleted: (data) => {
-      console.log('User data loaded:', data);
-      if (data?.user) {
-        form.reset({
-          email: data.user.email || "",
-          password: "",
-          first_name: data.user.first_name || "",
-          last_name: data.user.last_name || "",
-          is_active: data.user.is_active || false,
-          role_ids: data.user.user_roles?.map((ur: any) => ur.role.id) || [],
-        });
-      }
-    },
-    onError: (error) => {
-      console.error('Error loading user data:', error);
-    }
-  });
-
-  const [createUser] = useMutation(CREATE_USER, {
-    onCompleted: () => {
-      toast.success("새로운 사용자가 생성되었습니다.");
-      router.push("/admin/users");
-    },
-    onError: (error) => {
-      toast.error("사용자 생성 실패", {
-        description: error.message,
-      });
-      setIsLoading(false);
-    },
-  });
-
-  const [updateUser] = useMutation(UPDATE_USER, {
-    onCompleted: () => {
-      toast.success("사용자 정보가 수정되었습니다.");
-      router.push("/admin/users");
-    },
-    onError: (error) => {
-      toast.error("사용자 수정 실패", {
-        description: error.message,
-      });
-      setIsLoading(false);
-    },
-  });
-
-  const form = useForm<z.infer<typeof formSchema>>({
+  const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      email: "",
-      password: "",
-      first_name: "",
-      last_name: "",
+      email: '',
+      first_name: '',
+      last_name: '',
+      profile_image: '',
       is_active: true,
-      role_ids: [],
+      metadata: '',
+    },
+  });
+
+  const { data, loading: queryLoading } = useQuery(GET_USER, {
+    variables: { id },
+  });
+
+  const [updateUser, { loading: updateLoading }] = useMutation(UPDATE_USER, {
+    onCompleted: () => {
+      toast.success('사용자 정보가 수정되었습니다.');
+      router.push('/admin/users');
+    },
+    onError: (error) => {
+      toast.error('오류가 발생했습니다.', {
+        description: error.message,
+      });
     },
   });
 
   useEffect(() => {
-    console.log('useEffect triggered with:', { userId, userData });
-    if (userId && userData?.user) {
-      console.log('Setting form data with:', userData.user);
+    if (data?.user) {
+      const { email, first_name, last_name, profile_image, is_active, metadata } = data.user;
       form.reset({
-        email: userData.user.email || "",
-        password: "",
-        first_name: userData.user.first_name || "",
-        last_name: userData.user.last_name || "",
-        is_active: userData.user.is_active || false,
-        role_ids: userData.user.user_roles?.map((ur: any) => ur.role.id) || [],
+        email,
+        first_name: first_name || '',
+        last_name: last_name || '',
+        profile_image: profile_image || '',
+        is_active,
+        metadata: metadata ? JSON.stringify(metadata, null, 2) : '',
       });
     }
-  }, [userId, userData]);
+  }, [data, form]);
 
-  const onSubmit = async (values: z.infer<typeof formSchema>) => {
-    setIsLoading(true);
-    const input = {
-      ...values,
-      password: values.password || undefined,
-    };
+  const onSubmit = async (values: FormValues) => {
+    try {
+      const input = {
+        ...values,
+        metadata: values.metadata ? JSON.parse(values.metadata) : null,
+      };
 
-    if (userId) {
-      updateUser({
+      await updateUser({
         variables: {
-          id: userId,
+          id,
           input,
         },
       });
-    } else {
-      createUser({
-        variables: {
-          input,
-        },
+    } catch (error) {
+      toast.error('오류가 발생했습니다.', {
+        description: 'metadata가 올바른 JSON 형식인지 확인해주세요.',
       });
     }
   };
 
-  if (userLoading) {
-    return (
-      <div className="flex items-center justify-center h-[50vh]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900" />
-      </div>
-    );
-  }
-
-  if (userError) {
-    return (
-      <div className="text-red-500 text-center">
-        사용자 정보를 불러오는데 실패했습니다: {userError.message}
-      </div>
-    );
-  }
-
-  if (roles.length === 0) {
-    return (
-      <div className="text-yellow-500 text-center">
-        사용 가능한 역할이 없습니다. 먼저 역할을 생성해주세요.
-      </div>
-    );
-  }
+  const loading = queryLoading || updateLoading;
+  const getInitials = (firstName?: string, lastName?: string) => {
+    const first = firstName?.charAt(0) || '';
+    const last = lastName?.charAt(0) || '';
+    return (first + last).toUpperCase() || '?';
+  };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{userId ? "사용자 수정" : "신규 사용자 생성"}</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>이메일</FormLabel>
-                  <FormControl>
-                    <Input placeholder="이메일" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="password"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>{userId ? "새 비밀번호 (선택)" : "비밀번호"}</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="password"
-                      placeholder={userId ? "변경하지 않으려면 비워두세요" : "비밀번호"}
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="first_name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>이름</FormLabel>
-                    <FormControl>
-                      <Input placeholder="이름" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
+    <Card className="p-6">
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          <div className="flex items-center gap-4 mb-6">
+            <Avatar className="h-20 w-20">
+              <AvatarImage
+                src={form.watch('profile_image')}
+                alt={form.watch('email')}
               />
-              <FormField
-                control={form.control}
-                name="last_name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>성</FormLabel>
-                    <FormControl>
-                      <Input placeholder="성" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <AvatarFallback>
+                {getInitials(form.watch('first_name'), form.watch('last_name'))}
+              </AvatarFallback>
+            </Avatar>
+            <div>
+              <h2 className="text-lg font-medium">프로필 이미지</h2>
+              <p className="text-sm text-muted-foreground">
+                사용자의 프로필 이미지 URL을 입력하세요.
+              </p>
             </div>
+          </div>
+
+          <FormField
+            control={form.control}
+            name="email"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>이메일</FormLabel>
+                <FormControl>
+                  <Input {...field} type="email" disabled={loading} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <div className="grid grid-cols-2 gap-4">
             <FormField
               control={form.control}
-              name="is_active"
-              render={({ field }) => (
-                <FormItem className="flex flex-row items-center space-x-2 space-y-0">
-                  <FormControl>
-                    <Checkbox
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                    />
-                  </FormControl>
-                  <FormLabel className="font-normal">활성 상태</FormLabel>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="role_ids"
+              name="first_name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>역할</FormLabel>
+                  <FormLabel>이름</FormLabel>
                   <FormControl>
-                    <Select
-                      value={field.value?.[0] || ""}
-                      onValueChange={(value) => field.onChange([value])}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="역할을 선택하세요" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {roles.map((role: Role) => (
-                          <SelectItem key={role.id} value={role.id}>
-                            {role.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Input {...field} disabled={loading} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-            <div className="flex justify-end space-x-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => router.push("/admin/users")}
-              >
-                취소
-              </Button>
-              <Button type="submit" disabled={isLoading}>
-                {isLoading ? "처리 중..." : userId ? "수정" : "생성"}
-              </Button>
-            </div>
-          </form>
-        </Form>
-      </CardContent>
+
+            <FormField
+              control={form.control}
+              name="last_name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>성</FormLabel>
+                  <FormControl>
+                    <Input {...field} disabled={loading} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+
+          <FormField
+            control={form.control}
+            name="profile_image"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>프로필 이미지 URL</FormLabel>
+                <FormControl>
+                  <Input {...field} disabled={loading} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="metadata"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>메타데이터</FormLabel>
+                <FormControl>
+                  <Textarea
+                    {...field}
+                    disabled={loading}
+                    rows={10}
+                    placeholder="JSON 형식으로 입력해주세요."
+                  />
+                </FormControl>
+                <FormDescription>
+                  사용자와 관련된 추가 정보를 JSON 형식으로 입력하세요.
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="is_active"
+            render={({ field }) => (
+              <FormItem className="flex items-center justify-between rounded-lg border p-4">
+                <div className="space-y-0.5">
+                  <FormLabel>활성화</FormLabel>
+                  <FormDescription>
+                    이 사용자 계정을 활성화 또는 비활성화합니다.
+                  </FormDescription>
+                </div>
+                <FormControl>
+                  <Switch
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                    disabled={loading}
+                  />
+                </FormControl>
+              </FormItem>
+            )}
+          />
+
+          <div className="flex justify-end space-x-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => router.push('/admin/users')}
+              disabled={loading}
+            >
+              취소
+            </Button>
+            <Button type="submit" disabled={loading}>
+              수정
+            </Button>
+          </div>
+        </form>
+      </Form>
     </Card>
   );
-};
-
-export { UserForm }; 
+} 

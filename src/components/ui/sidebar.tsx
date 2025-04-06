@@ -3,9 +3,14 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { Users, Shield, Lock } from "lucide-react";
+import { Users, Shield, Lock, Globe, Share2 } from "lucide-react";
 
 const navigation = [
+  {
+    name: "사이트 관리",
+    href: "/admin/sites",
+    icon: Globe,
+  },
   {
     name: "사용자 관리",
     href: "/admin/users",
@@ -20,6 +25,11 @@ const navigation = [
     name: "권한 관리",
     href: "/admin/permissions",
     icon: Lock,
+  },
+  {
+    name: "소셜 인증 관리",
+    href: "/admin/social-providers",
+    icon: Share2,
   },
 ];
 

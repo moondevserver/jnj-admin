@@ -31,49 +31,47 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { GET_PERMISSIONS, DELETE_PERMISSION } from "@/graphql/permissions";
-import { GET_CURRENT_USER } from "@/graphql/auth";
-import { Permission } from "@/types";
+import { GET_SITES, DELETE_SITE } from "@/graphql/sites";
 
-const PermissionTable = () => {
+const SiteTable = () => {
   const router = useRouter();
   const [search, setSearch] = useState("");
-  const [deletePermissionId, setDeletePermissionId] = useState<string | null>(null);
+  const [deleteSiteId, setDeleteSiteId] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-  const { loading, error, data, refetch } = useQuery(GET_PERMISSIONS, {
+  const { loading, error, data, refetch } = useQuery(GET_SITES, {
     variables: {
       search: search || undefined,
     },
     fetchPolicy: "network-only",
   });
 
-  const [deletePermission] = useMutation(DELETE_PERMISSION, {
+  const [deleteSite] = useMutation(DELETE_SITE, {
     onCompleted: () => {
-      toast.success("권한이 성공적으로 삭제되었습니다.");
+      toast.success("사이트가 성공적으로 삭제되었습니다.");
       refetch();
     },
     onError: (error) => {
-      toast.error("권한 삭제 실패", {
+      toast.error("사이트 삭제 실패", {
         description: error.message,
       });
     },
   });
 
-  const handleDeleteClick = (permissionId: string) => {
-    setDeletePermissionId(permissionId);
+  const handleDeleteClick = (siteId: string) => {
+    setDeleteSiteId(siteId);
     setIsDialogOpen(true);
   };
 
   const handleDeleteConfirm = () => {
-    if (deletePermissionId) {
-      deletePermission({
+    if (deleteSiteId) {
+      deleteSite({
         variables: {
-          id: deletePermissionId,
+          id: deleteSiteId,
         },
       });
       setIsDialogOpen(false);
-      setDeletePermissionId(null);
+      setDeleteSiteId(null);
     }
   };
 
@@ -84,7 +82,7 @@ const PermissionTable = () => {
     });
   };
 
-  const permissions = data?.permissions || [];
+  const sites = data?.sites || [];
 
   if (error) {
     return <div>오류가 발생했습니다: {error.message}</div>;
@@ -93,10 +91,10 @@ const PermissionTable = () => {
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">권한 관리</h2>
-        <Button onClick={() => router.push("/admin/permissions/new")}>
+        <h2 className="text-2xl font-bold">사이트 관리</h2>
+        <Button onClick={() => router.push("/admin/sites/new")}>
           <PlusCircle className="mr-2 h-4 w-4" />
-          신규 권한
+          신규 사이트
         </Button>
       </div>
 
@@ -104,7 +102,7 @@ const PermissionTable = () => {
         <div className="relative flex-1">
           <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="권한 검색..."
+            placeholder="사이트 검색..."
             value={search}
             onChange={handleSearch}
             className="pl-8"
@@ -116,31 +114,49 @@ const PermissionTable = () => {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>코드</TableHead>
+              <TableHead>도메인</TableHead>
               <TableHead>이름</TableHead>
               <TableHead>설명</TableHead>
+              <TableHead>상태</TableHead>
+              <TableHead>페이지 수</TableHead>
+              <TableHead>생성일</TableHead>
               <TableHead className="text-right">작업</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={4} className="text-center">
+                <TableCell colSpan={7} className="text-center">
                   로딩 중...
                 </TableCell>
               </TableRow>
-            ) : permissions.length === 0 ? (
+            ) : sites.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={4} className="text-center">
-                  권한이 없습니다.
+                <TableCell colSpan={7} className="text-center">
+                  사이트가 없습니다.
                 </TableCell>
               </TableRow>
             ) : (
-              permissions.map((permission: any) => (
-                <TableRow key={permission.id}>
-                  <TableCell>{permission.code}</TableCell>
-                  <TableCell>{permission.name}</TableCell>
-                  <TableCell>{permission.description}</TableCell>
+              sites.map((site: any) => (
+                <TableRow key={site.id}>
+                  <TableCell>{site.domain}</TableCell>
+                  <TableCell>{site.name}</TableCell>
+                  <TableCell>{site.description}</TableCell>
+                  <TableCell>
+                    <span
+                      className={`px-2 py-1 rounded-full text-xs ${
+                        site.is_active
+                          ? "bg-green-100 text-green-800"
+                          : "bg-red-100 text-red-800"
+                      }`}
+                    >
+                      {site.is_active ? "활성" : "비활성"}
+                    </span>
+                  </TableCell>
+                  <TableCell>{site.pages?.length || 0}</TableCell>
+                  <TableCell>
+                    {new Date(site.created_at).toLocaleDateString()}
+                  </TableCell>
                   <TableCell className="text-right">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -151,13 +167,13 @@ const PermissionTable = () => {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem
-                          onClick={() => router.push(`/admin/permissions/${permission.id}`)}
+                          onClick={() => router.push(`/admin/sites/${site.id}`)}
                         >
                           편집
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           className="text-red-600"
-                          onClick={() => handleDeleteClick(permission.id)}
+                          onClick={() => handleDeleteClick(site.id)}
                         >
                           삭제
                         </DropdownMenuItem>
@@ -174,9 +190,9 @@ const PermissionTable = () => {
       <AlertDialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>권한 삭제</AlertDialogTitle>
+            <AlertDialogTitle>사이트 삭제</AlertDialogTitle>
             <AlertDialogDescription>
-              정말로 이 권한을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.
+              정말로 이 사이트를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -191,4 +207,4 @@ const PermissionTable = () => {
   );
 };
 
-export { PermissionTable }; 
+export { SiteTable }; 
