@@ -48,6 +48,17 @@ const CREATE_ROLE = gql`
       id
       name
       description
+      site {
+        id
+        domain
+        name
+      }
+      permissions {
+        id
+        name
+        code
+        description
+      }
     }
   }
 `;
@@ -58,6 +69,17 @@ const UPDATE_ROLE = gql`
       id
       name
       description
+      site {
+        id
+        domain
+        name
+      }
+      permissions {
+        id
+        name
+        code
+        description
+      }
     }
   }
 `;

@@ -90,60 +90,15 @@ const RoleForm = ({ roleId }: RoleFormProps) => {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
 
-  // 임시 하드코딩된 역할 데이터
-  const mockRoles = [
-    {
-      id: "1",
-      name: "시스템 관리자",
-      description: "시스템의 모든 기능에 접근 가능한 관리자",
-      permissions: [
-        { id: "1", name: "사용자 관리", code: "user:manage", description: "사용자 생성, 수정, 삭제" },
-        { id: "2", name: "역할 관리", code: "role:manage", description: "역할 생성, 수정, 삭제" },
-      ],
-    },
-    {
-      id: "2",
-      name: "일반 사용자",
-      description: "기본적인 기능만 사용 가능한 일반 사용자",
-      permissions: [
-        { id: "3", name: "프로필 조회", code: "profile:read", description: "자신의 프로필 조회" },
-        { id: "4", name: "프로필 수정", code: "profile:write", description: "자신의 프로필 수정" },
-      ],
-    },
-    {
-      id: "3",
-      name: "편집자",
-      description: "콘텐츠 편집 권한을 가진 사용자",
-      permissions: [
-        { id: "5", name: "콘텐츠 조회", code: "content:read", description: "콘텐츠 조회" },
-        { id: "6", name: "콘텐츠 편집", code: "content:write", description: "콘텐츠 생성, 수정, 삭제" },
-      ],
-    },
-    {
-      id: "4",
-      name: "조회자",
-      description: "콘텐츠 조회만 가능한 사용자",
-      permissions: [
-        { id: "5", name: "콘텐츠 조회", code: "content:read", description: "콘텐츠 조회" },
-      ],
-    },
-  ];
-
-  // 임시 하드코딩된 권한 목록
-  const mockPermissions = [
-    { id: "1", name: "사용자 관리", code: "user:manage", description: "사용자 생성, 수정, 삭제" },
-    { id: "2", name: "역할 관리", code: "role:manage", description: "역할 생성, 수정, 삭제" },
-    { id: "3", name: "프로필 조회", code: "profile:read", description: "자신의 프로필 조회" },
-    { id: "4", name: "프로필 수정", code: "profile:write", description: "자신의 프로필 수정" },
-    { id: "5", name: "콘텐츠 조회", code: "content:read", description: "콘텐츠 조회" },
-    { id: "6", name: "콘텐츠 편집", code: "content:write", description: "콘텐츠 생성, 수정, 삭제" },
-  ];
-
-  // 권한 목록 조회 (하드코딩된 데이터 사용)
-  const permissions = mockPermissions;
+  // 권한 목록 조회
+  const { data: permissionsData } = useQuery(GET_PERMISSIONS);
+  const permissions = permissionsData?.permissions || [];
 
   // 역할 정보 조회 (수정 시)
-  const mockRole = roleId ? mockRoles.find(role => role.id === roleId) : null;
+  const { data: roleData } = useQuery(GET_ROLE, {
+    variables: { id: roleId },
+    skip: !roleId,
+  });
 
   const [createRole] = useMutation(CREATE_ROLE, {
     onCompleted: () => {
@@ -181,11 +136,12 @@ const RoleForm = ({ roleId }: RoleFormProps) => {
   });
 
   useEffect(() => {
-    if (mockRole && !form.formState.isDirty) {
+    if (roleData?.role && !form.formState.isDirty) {
+      const role = roleData.role;
       const defaultValues = {
-        name: mockRole.name,
-        description: mockRole.description || "",
-        permissionIds: mockRole.permissions.map((permission: Permission) => permission.id),
+        name: role.name,
+        description: role.description || "",
+        permissionIds: role.permissions.map((permission: Permission) => permission.id),
       };
       
       // 현재 폼 값과 새로운 값이 다를 때만 reset 실행
@@ -193,7 +149,7 @@ const RoleForm = ({ roleId }: RoleFormProps) => {
         form.reset(defaultValues);
       }
     }
-  }, [mockRole]);
+  }, [roleData]);
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setIsLoading(true);
